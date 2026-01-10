@@ -144,6 +144,13 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
       if (dirEntry.isDirectory()) {
         // it's a directory
         respHtml += '<h4><a href="' + HTML_URL_BASE + filePath + '">📁 ' + fileName + '</a></h4>'
+      } else if (['.mov', '.avi', '.mp4', '.wmv'].includes(path.extname(fileName).toLowerCase())) {
+        // it's a video file
+        respHtml += `<a href="${FILES_URL_BASE + filePath}">`
+        respHtml += `<figure style="display:inline-block; margin:10px; text-align:center;">`
+        respHtml += `<span style="font-size:60px;">🎞️</span>`
+        respHtml += `<figcaption style="font-size:x-small">${fileName}</figcaption>`
+        respHtml += `</figure></a>`
       } else if (['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(fileName).toLowerCase())) {
         // it's a file
         // only keep image files
@@ -151,7 +158,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
         let imgPreviewPath = PREVIEWS_URL_BASE + filePath + '@' + PREVIEW_SIZE
         respHtml += `<a href="${FILES_URL_BASE + filePath}">`
         respHtml += `<figure style="display:inline-block; margin:10px; text-align:center;">`
-        respHtml += `<img src="${imgPreviewPath}"><br>`
+        respHtml += `<img src="${imgPreviewPath}">`
         respHtml += `<figcaption style="font-size:x-small">${fileName}</figcaption>`
         respHtml += `</figure></a>`
       }
@@ -180,11 +187,19 @@ server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
     resp.set('Content-Type', 'image/png')
   } else if (extension === '.gif') {
     resp.set('Content-Type', 'image/gif')
+  } else if (extension === '.mp4') {
+    resp.set('Content-Type', 'video/mp4')
+  } else if (extension === '.mov') {
+    resp.set('Content-Type', 'video/quicktime')
+  } else if (extension === '.avi') {
+    resp.set('Content-Type', 'video/x-msvideo')
+  } else if (extension === '.wmv') {
+    resp.set('Content-Type', 'video/x-ms-wmv')
   }
 
-  let filebuffer = await fs.readFile(routeFullPath)
   // serve the file
-  resp.send(filebuffer)
+  const fd = await fs.open(routeFullPath, 'r')
+  fd.createReadStream().pipe(resp)
 })
 
 // create and serve preview picture
