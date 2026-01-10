@@ -70,6 +70,7 @@ if (BASIC_AUTH_USERS_FILE) {
   server.use(ensureAuth)
 }
 
+// serve html gallery
 server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   console.log('Requested route: ', req.path)
   if (BASIC_AUTH_USERS_FILE) {
@@ -90,6 +91,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   try {
     await fs.access(routeFullPath, constants.R_OK)
   } catch {
+    console.error('Route not found: ', routeFullPath)
     resp.statusCode = 404
     resp.end('Route not found')
     return
@@ -98,7 +100,9 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   let filestat = await fs.lstat(routeFullPath)
   if (filestat.isDirectory()) {
     // list all files and subdirectories
-    let dirContent = await fs.readdir(routeFullPath)
+    let dirContent = await fs.readdir(routeFullPath, { withFileTypes: true })
+    // sort directories first, then files, both alphabetically
+    dirContent = dirContent.sort((a, b) => b.isDirectory() - a.isDirectory() || a.name > b.name)
 
     let respHtml = HTML_PAGE_START
     respHtml += `
@@ -117,11 +121,15 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
       respHtml += `<a href="${HTML_URL_BASE + routePath.substring(0, iSlash)}"><h4>⬆️ Up</h4></a><br><br>`
     }
 
-    for (const fileName of dirContent) {
-      let filePath = path.join(routePath, fileName)
-      let fileFullPath = path.join(routeFullPath, fileName)
-      let filestat = await fs.lstat(fileFullPath)
-      if (filestat.isDirectory() && fileName !== '.' && fileName !== '..') {
+    for (const dirEntry of dirContent) {
+      const fileName = dirEntry.name
+      const filePath = path.join(routePath, fileName)
+
+      if (fileName.startsWith('.')) {
+        // skip hidden files and directories
+        continue
+      }
+      if (dirEntry.isDirectory()) {
         // it's a directory
         respHtml += '<h4><a href="' + filePath + '">📁 ' + fileName + '</a></h4>'
       } else if (['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(fileName).toLowerCase())) {
@@ -146,6 +154,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   }
 })
 
+// serve full size picture
 server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
   console.log('Requested original photo: ', req.path)
 
@@ -166,6 +175,7 @@ server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
   resp.send(filebuffer)
 })
 
+// create and serve preview picture
 server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
   console.log('Requested preview photo: ', req.path)
 
