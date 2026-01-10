@@ -6,14 +6,14 @@ import basicAuth from 'express-basic-auth'
 import { constants } from 'buffer'
 
 const PORT_NUMBER = process.env.PORT_NUMBER || 80
-const PHOTOS_ROOT_PATH = process.env.PHOTOS_ROOT_PATH || './photos'
+const PHOTOS_ROOT_PATH = process.env.PHOTOS_ROOT_PATH || '/photos'
 const SAVE_PREVIEWS = process.env.SAVE_PREVIEWS === 'true' || false
-const PREVIEWS_ROOT_PATH = process.env.PREVIEWS_ROOT_PATH || './previews'
+const PREVIEWS_ROOT_PATH = process.env.PREVIEWS_ROOT_PATH || '/previews'
 const PREVIEW_SIZE = process.env.PREVIEW_SIZE || 150
 const HTML_URL_BASE = process.env.HTML_URL_BASE || '/gallery/'
 const FILES_URL_BASE = process.env.FILES_URL_BASE || '/galleryfiles/'
 const PREVIEWS_URL_BASE = process.env.PREVIEWS_URL_BASE || '/gallerypreviews/'
-const BASIC_AUTH_USERS_FILE = process.env.BASIC_AUTH_USERS || 'users/users.json'
+const BASIC_AUTH_USERS_FILE = process.env.BASIC_AUTH_USERS_FILE || null
 const BASIC_AUTH_REALM = process.env.BASIC_AUTH_REALM || 'simple-gallery'
 
 const HTML_PAGE_START = `
@@ -84,7 +84,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
     }
   }
 
-  let routePath = req.path.substring(HTML_URL_BASE.length)
+  let routePath = decodeURIComponent(req.path).substring(HTML_URL_BASE.length)
   let routeFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
 
   try {
@@ -147,7 +147,9 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
 })
 
 server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
-  let routePath = req.path.substring(FILES_URL_BASE.length)
+  console.log('Requested original photo: ', req.path)
+
+  let routePath = decodeURIComponent(req.path).substring(FILES_URL_BASE.length)
   let routeFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
 
   let extension = path.extname(routeFullPath).toLowerCase()
@@ -159,18 +161,18 @@ server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
     resp.set('Content-Type', 'image/gif')
   }
 
-  console.log('Serving extension: ', extension, ' for file ', routeFullPath)
-
   let filebuffer = await fs.readFile(routeFullPath)
   // serve the file
   resp.send(filebuffer)
 })
 
 server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
-  let routePath = req.path.substring(PREVIEWS_URL_BASE.length)
+  console.log('Requested preview photo: ', req.path)
+
+  let routePath = decodeURIComponent(req.path).substring(PREVIEWS_URL_BASE.length)
   let previewsRouteFullPath = path.join(PREVIEWS_ROOT_PATH, routePath)
 
-  if (SAVE_PREVIEWS) {
+  if (SAVE_PREVIEWS == 'true' || SAVE_PREVIEWS === true) {
     // extract folder name
     let pp = previewsRouteFullPath.split('/')
     let filename = pp[pp.length - 1]
@@ -182,6 +184,7 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
     try {
       await fs.access(folderName, fs.constants.R_OK)
     } catch {
+      console.log('preview folder does not exist, creating it ', folderName)
       await fs.mkdir(folderName, { recursive: true })
     }
     // check if file exists, otherwise create it
@@ -190,7 +193,7 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
       let filebuffer = await fs.readFile(previewsRouteFullPath)
       resp.send(filebuffer)
     } catch {
-      console.log('preview file does not exist ', previewsRouteFullPath)
+      console.log('preview file does not exist, creating it ', previewsRouteFullPath)
 
       // create the the previewfile
       let originalFileFullPath = path.join(PHOTOS_ROOT_PATH, routePath)

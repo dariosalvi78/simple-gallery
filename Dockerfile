@@ -9,6 +9,6 @@ RUN npm install --production
 COPY . /opt/app-root/src
 WORKDIR /opt/app-root/src
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 CMD ["npm", "start"]

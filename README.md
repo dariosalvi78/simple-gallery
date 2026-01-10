@@ -27,7 +27,7 @@ You can pass through a .env file or through the shell env variables.
 | HTML_URL_BASE         | Base URL where the gallery HTML is served                            | /gallery/         |
 | FILES_URL_BASE        | Base URL where original size pictures are served                     | /galleryfiles/    |
 | PREVIEWS_URL_BASE     | Base URL where previews are served                                   | /gallerypreviews/ |
-| BASIC_AUTH_USERS_FILE | If specified, the gallery will be protected by username and password | users/users.json  |
+| BASIC_AUTH_USERS_FILE | If specified, the gallery will be protected by username and password | null              |
 | BASIC_AUTH_REALM      | Realm of Basic Auth                                                  | simple-gallery    |
 
 Make sure that PHOTOS_ROOT_PATH points to a root folder where all pictures are available.
@@ -54,3 +54,23 @@ The authorization file must be setup in the following way:
 the acessLevel is specified as follows:
 
 - "all" gives access to all pictures and folders
+
+# Docker
+
+There is a Dockerfile that allows you to run the server in docker.
+
+- download this repository
+- compile the image with `docker build . -t simple-gallery`
+- create a users.json file for access rules if needed
+- run it specifying the environmental variables.
+  For example, a minimal configuration would be:
+
+```sh
+docker run -d \
+--name simple-gallery \
+-p 8080:80 \
+-v path/to/photos:/photos \
+-e PHOTOS_ROOT_PATH=/photos \
+-e SAVE_PREVIEWS=false \
+simple-gallery
+```
