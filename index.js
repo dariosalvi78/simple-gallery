@@ -143,7 +143,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
       }
       if (dirEntry.isDirectory()) {
         // it's a directory
-        respHtml += '<h4><a href="' + filePath + '">📁 ' + fileName + '</a></h4>'
+        respHtml += '<h4><a href="' + HTML_URL_BASE + filePath + '">📁 ' + fileName + '</a></h4>'
       } else if (['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(fileName).toLowerCase())) {
         // it's a file
         // only keep image files
