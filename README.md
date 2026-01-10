@@ -19,6 +19,7 @@ You can pass through a .env file or through the shell env variables.
 
 | **Variable name**     | **Usage**                                                            | **Default**       |
 | --------------------- | -------------------------------------------------------------------- | ----------------- |
+| LOG_LEVEL             | Level of logging (standard output). 'debug, info' or 'error'         | debug             |
 | PORT_NUMBER           | Web server port number                                               | 8080              |
 | PHOTOS_ROOT_PATH      | Path on the local file system where photos are located               | ./photos          |
 | SAVE_PREVIEWS         | If true, previews are cached on files, else they are generated       | false             |

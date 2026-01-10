@@ -15,6 +15,18 @@ const FILES_URL_BASE = process.env.FILES_URL_BASE || '/galleryfiles/'
 const PREVIEWS_URL_BASE = process.env.PREVIEWS_URL_BASE || '/gallerypreviews/'
 const BASIC_AUTH_USERS_FILE = process.env.BASIC_AUTH_USERS_FILE || null
 const BASIC_AUTH_REALM = process.env.BASIC_AUTH_REALM || 'simple-gallery'
+const LOG_LEVEL = process.env.LOG_LEVEL || 'debug' // 'error', 'info' or 'debug'
+
+const log = (level, message) => {
+  const levels = { error: 0, info: 1, debug: 2 }
+  if (levels[level] <= levels[LOG_LEVEL]) {
+    console.log(`[${level.toUpperCase()}] - ${new Date().toISOString()} - ${message}`)
+  }
+}
+
+const logError = (message) => log('error', message)
+const logInfo = (message) => log('info', message)
+const logDebug = (message) => log('debug', message)
 
 const HTML_PAGE_START = `
     <html lang="en">
@@ -40,7 +52,7 @@ if (BASIC_AUTH_USERS_FILE) {
     let usersFileContent = await fs.readFile(BASIC_AUTH_USERS_FILE, 'utf-8')
     users = JSON.parse(usersFileContent)
   } catch (err) {
-    console.error('Error loading BASIC_AUTH_USERS_FILE: ', err)
+    logError('Error loading BASIC_AUTH_USERS_FILE: ' + err)
   }
 
   let users4BasicAuth = users
@@ -50,7 +62,7 @@ if (BASIC_AUTH_USERS_FILE) {
       return obj
     }, {})
 
-  console.log('Loaded users for basic auth')
+  logInfo('Loaded users for basic auth')
 
   const ensureAuth = basicAuth({
     users: users4BasicAuth,
@@ -72,12 +84,12 @@ if (BASIC_AUTH_USERS_FILE) {
 
 // serve html gallery
 server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
-  console.log('Requested route: ', req.path)
+  logDebug('Requested route: ' + req.path)
   if (BASIC_AUTH_USERS_FILE) {
-    console.log('  Authenticated user: ', req.auth.user)
     // get access level
     let accessLevel = users.find((u) => u.userName === req.auth.user)?.accessLevel || 'none'
-
+    logDebug('  Authenticated user: ' + req.auth.user)
+    logDebug('  Access level: ' + accessLevel)
     if (accessLevel !== 'all') {
       resp.statusCode = 403
       resp.end('Access denied')
@@ -91,7 +103,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   try {
     await fs.access(routeFullPath, constants.R_OK)
   } catch {
-    console.error('Route not found: ', routeFullPath)
+    logError('Path requested but not found on disk: ' + routeFullPath)
     resp.statusCode = 404
     resp.end('Route not found')
     return
@@ -156,7 +168,7 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
 
 // serve full size picture
 server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
-  console.log('Requested original photo: ', req.path)
+  logDebug('Requested original photo: ' + req.path)
 
   let routePath = decodeURIComponent(req.path).substring(FILES_URL_BASE.length)
   let routeFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
@@ -177,7 +189,7 @@ server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
 
 // create and serve preview picture
 server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
-  console.log('Requested preview photo: ', req.path)
+  logDebug('Requested preview photo: ' + req.path)
 
   let routePath = decodeURIComponent(req.path).substring(PREVIEWS_URL_BASE.length)
   let previewsRouteFullPath = path.join(PREVIEWS_ROOT_PATH, routePath)
@@ -194,7 +206,7 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
     try {
       await fs.access(folderName, fs.constants.R_OK)
     } catch {
-      console.log('preview folder does not exist, creating it ', folderName)
+      logInfo('Preview folder does not exist, creating it ' + folderName)
       await fs.mkdir(folderName, { recursive: true })
     }
     // check if file exists, otherwise create it
@@ -203,7 +215,7 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
       let filebuffer = await fs.readFile(previewsRouteFullPath)
       resp.send(filebuffer)
     } catch {
-      console.log('preview file does not exist, creating it ', previewsRouteFullPath)
+      logInfo('Preview file does not exist, creating it ' + previewsRouteFullPath)
 
       // create the the previewfile
       let originalFileFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
@@ -239,5 +251,5 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
 })
 
 server.listen(PORT_NUMBER, () => {
-  console.log(`Server listening on ${PORT_NUMBER}`)
+  logInfo(`Server listening on ${PORT_NUMBER}`)
 })
