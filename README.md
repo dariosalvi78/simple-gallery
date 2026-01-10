@@ -55,11 +55,14 @@ the acessLevel is specified as follows:
 
 - "all" gives access to all pictures and folders
 
+TODO: add folder-based permission system
+
 # Docker
 
 There is a Dockerfile that allows you to run the server in docker.
 
 - download this repository
+- change the first line of the Dockerfile and select the version that works for your architecture
 - compile the image with `docker build . -t simple-gallery`
 - create a users.json file for access rules if needed
 - run it specifying the environmental variables.

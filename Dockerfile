@@ -1,4 +1,5 @@
-FROM node:24.12-alpine
+#FROM node:22-alpine
+FROM arm32v7/node:22-alpine
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
