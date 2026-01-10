@@ -1,4 +1,5 @@
 import fs from 'fs/promises'
+import { createReadStream } from 'node:fs'
 import path from 'path'
 import sharp from 'sharp'
 import express from 'express'
@@ -197,9 +198,7 @@ server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
     resp.set('Content-Type', 'video/x-ms-wmv')
   }
 
-  // serve the file
-  const fd = await fs.open(routeFullPath, 'r')
-  fd.createReadStream().pipe(resp)
+  createReadStream(routeFullPath).pipe(resp)
 })
 
 // create and serve preview picture
