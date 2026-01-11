@@ -177,6 +177,11 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   }
 })
 
+if (SAVE_PREVIEWS == 'true' || SAVE_PREVIEWS === true) {
+  // setup static serving of previews folder
+  server.use(PREVIEWS_URL_BASE, express.static(PREVIEWS_ROOT_PATH))
+}
+
 // create and serve preview picture
 server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
   logDebug('Requested preview photo: ' + req.path)
@@ -202,8 +207,8 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
     // check if file exists, otherwise create it
     try {
       await fs.access(previewsRouteFullPath, fs.constants.R_OK)
-      let filebuffer = await fs.readFile(previewsRouteFullPath)
-      resp.send(filebuffer)
+      // this should never happen due to express static serving the previews folder
+      createReadStream(previewsRouteFullPath).pipe(resp)
     } catch {
       logInfo('Preview file does not exist, creating it ' + previewsRouteFullPath)
 
@@ -216,8 +221,7 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
       await sharp(filebuffer).resize(size, size, { fit: 'inside' }).toFile(previewsRouteFullPath)
 
       // now open the preview file and serve it
-      filebuffer = await fs.readFile(previewsRouteFullPath)
-      resp.send(filebuffer)
+      createReadStream(previewsRouteFullPath).pipe(resp)
     }
   } else {
     // create the the previewfile
@@ -241,5 +245,6 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
 })
 
 server.listen(PORT_NUMBER, () => {
-  logInfo(`Server listening on ${PORT_NUMBER}`)
+  const threads = sharp.concurrency()
+  logInfo(`Server listening on ${PORT_NUMBER} with ${threads} sharp threads`)
 })
