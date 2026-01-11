@@ -83,6 +83,9 @@ if (BASIC_AUTH_USERS_FILE) {
   server.use(ensureAuth)
 }
 
+// serve original files
+server.use(FILES_URL_BASE, express.static(PHOTOS_ROOT_PATH))
+
 // serve html gallery
 server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   logDebug('Requested route: ' + req.path)
@@ -172,33 +175,6 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   } else {
     resp.sendStatus(404)
   }
-})
-
-// serve full size picture
-server.get(new RegExp('^' + FILES_URL_BASE + '.*'), async (req, resp) => {
-  logDebug('Requested original photo: ' + req.path)
-
-  let routePath = decodeURIComponent(req.path).substring(FILES_URL_BASE.length)
-  let routeFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
-
-  let extension = path.extname(routeFullPath).toLowerCase()
-  if (extension === '.jpg' || extension === '.jpeg') {
-    resp.set('Content-Type', 'image/jpeg')
-  } else if (extension === '.png') {
-    resp.set('Content-Type', 'image/png')
-  } else if (extension === '.gif') {
-    resp.set('Content-Type', 'image/gif')
-  } else if (extension === '.mp4') {
-    resp.set('Content-Type', 'video/mp4')
-  } else if (extension === '.mov') {
-    resp.set('Content-Type', 'video/quicktime')
-  } else if (extension === '.avi') {
-    resp.set('Content-Type', 'video/x-msvideo')
-  } else if (extension === '.wmv') {
-    resp.set('Content-Type', 'video/x-ms-wmv')
-  }
-
-  createReadStream(routeFullPath).pipe(resp)
 })
 
 // create and serve preview picture
