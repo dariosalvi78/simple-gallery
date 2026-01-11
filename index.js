@@ -5,6 +5,7 @@ import sharp from 'sharp'
 import express from 'express'
 import basicAuth from 'express-basic-auth'
 import { constants } from 'buffer'
+import favicon from 'serve-favicon'
 
 const PORT_NUMBER = process.env.PORT_NUMBER || 80
 const PHOTOS_ROOT_PATH = process.env.PHOTOS_ROOT_PATH || '/photos'
@@ -35,6 +36,7 @@ const HTML_PAGE_START = `
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.lime.min.css">
     <title>Simple Gallery</title>
     </head>
@@ -44,6 +46,8 @@ const HTML_PAGE_START = `
 const HTML_PAGE_END = `</main></body></html>`
 
 const server = express()
+
+server.use(favicon('favicon.ico'))
 
 let users = {}
 
