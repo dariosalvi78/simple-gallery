@@ -209,7 +209,11 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
         }
         if (isAllowed)
           respHtml += '<h4><a href="' + HTML_URL_BASE + filePath + '">📁 ' + fileName + '</a></h4>'
-      } else if (['.mov', '.avi', '.mp4', '.wmv'].includes(path.extname(fileName).toLowerCase())) {
+      } else if (
+        ['.mov', '.avi', '.mpg', '.mpeg', '.mp4', '.wmv'].includes(
+          path.extname(fileName).toLowerCase()
+        )
+      ) {
         // it's a video file
         respHtml += `<a href="${FILES_URL_BASE + filePath}">`
         respHtml += `<figure style="display:inline-block; margin:10px; text-align:center;">`
