@@ -88,18 +88,69 @@ if (BASIC_AUTH_USERS_FILE) {
   server.use(ensureAuth)
 }
 
+/**
+ * Check if the given routePath is allowed for the given accessLevel
+ * @param {string | object} accessLevel
+ * @param {string} routePath
+ * @returns {boolean} true if allowed, false otherwise
+ */
+const isPathAllowed = (accessLevel, routePath) => {
+  // comparison is done on encoded paths without slashes
+  routePath = encodeURIComponent(routePath.replace(/\//g, ''))
+  if (accessLevel !== 'all') {
+    if (typeof accessLevel === 'object') {
+      // check deny list first
+      if (accessLevel.deny) {
+        for (const deniedEntry of accessLevel.deny) {
+          const deniedPath = encodeURIComponent((HTML_URL_BASE + deniedEntry).replace(/\//g, ''))
+          logDebug(`Checking denied entry ${deniedPath} for path ${routePath}`)
+
+          if (routePath.includes(deniedPath)) {
+            logDebug(`Path ${routePath} is denied due to denied entry ${deniedPath}`)
+            return false
+          }
+        }
+      }
+      // check allow list
+      if (accessLevel.allow) {
+        let allowed = false
+        for (const allowedEntry of accessLevel.allow) {
+          const allowedPath = encodeURIComponent((HTML_URL_BASE + allowedEntry).replace(/\//g, ''))
+          logDebug(`Checking allowed entry ${allowedPath} for path ${routePath}`)
+          if (routePath.includes(allowedPath)) {
+            allowed = true
+            break
+          }
+        }
+        if (!allowed) {
+          logDebug(`Path ${routePath} is denied for lack of allowed entry`)
+
+          return false
+        }
+      }
+    } else {
+      return false
+    }
+  }
+  return true
+}
+
 // serve original files
 server.use(FILES_URL_BASE, express.static(PHOTOS_ROOT_PATH))
 
 // serve html gallery
 server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
   logDebug('Requested route: ' + req.path)
+
+  let accessLevel
   if (BASIC_AUTH_USERS_FILE) {
     // get access level
-    let accessLevel = users.find((u) => u.userName === req.auth.user)?.accessLevel || 'none'
-    logDebug('  Authenticated user: ' + req.auth.user)
-    logDebug('  Access level: ' + accessLevel)
-    if (accessLevel !== 'all') {
+    accessLevel = users.find((u) => u.userName === req.auth.user)?.accessLevel || 'none'
+    logDebug('Authenticated user: ' + req.auth.user)
+    logDebug('Access level: ' + JSON.stringify(accessLevel))
+    const isAllowed = isPathAllowed(accessLevel, req.path)
+    if (!isAllowed) {
+      logInfo(`Access denied to user ${req.auth.user} for path ${req.path}`)
       resp.statusCode = 403
       resp.end('Access denied')
       return
@@ -152,7 +203,12 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
       }
       if (dirEntry.isDirectory()) {
         // it's a directory
-        respHtml += '<h4><a href="' + HTML_URL_BASE + filePath + '">📁 ' + fileName + '</a></h4>'
+        let isAllowed = true
+        if (BASIC_AUTH_USERS_FILE) {
+          isAllowed = isPathAllowed(accessLevel, HTML_URL_BASE + filePath + '/')
+        }
+        if (isAllowed)
+          respHtml += '<h4><a href="' + HTML_URL_BASE + filePath + '">📁 ' + fileName + '</a></h4>'
       } else if (['.mov', '.avi', '.mp4', '.wmv'].includes(path.extname(fileName).toLowerCase())) {
         // it's a video file
         respHtml += `<a href="${FILES_URL_BASE + filePath}">`
