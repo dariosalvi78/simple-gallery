@@ -37,6 +37,7 @@ const HTML_PAGE_START = `
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="license" href="https://www.gnu.org/licenses/agpl-3.0.txt" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.lime.min.css">
     <title>Simple Gallery</title>
     </head>
