@@ -332,7 +332,10 @@ server.get(new RegExp('^' + SINGLEPHOTO_URL_BASE + '.*'), async (req, resp) => {
   // read the file metadata
   let filebuffer = await fs.readFile(originalFileFullPath)
   let metadata = await sharp(filebuffer).metadata()
-  let exifdata = exif(metadata.exif)
+  let exifdata = undefined
+  if (metadata.exif) {
+    exifdata = exif(metadata.exif)
+  }
 
   let respHtml = HTML_PAGE_START
   respHtml += `
@@ -340,7 +343,7 @@ server.get(new RegExp('^' + SINGLEPHOTO_URL_BASE + '.*'), async (req, resp) => {
     <h2>${routePath}</h2>
     </header>
     `
-  const phone = exifdata?.Image?.Make + ' ' + exifdata?.Image?.Model
+  const camera = exifdata?.Image?.Make + ' ' + exifdata?.Image?.Model
   const date = exifdata?.Photo?.DateTimeOriginal
   const latitude =
     exifdata?.GPSInfo?.GPSLatitude[0] +
@@ -363,7 +366,7 @@ server.get(new RegExp('^' + SINGLEPHOTO_URL_BASE + '.*'), async (req, resp) => {
   respHtml += `</a>`
   respHtml += `</div><br>`
   respHtml += `<article>`
-  respHtml += `<div>Phone: ${phone}</div>`
+  respHtml += `<div>Camera: ${camera}</div>`
   respHtml += `<div>Date: ${date}</div>`
   if (latitude && longitude) {
     respHtml += `<div id="map" style="height: 180px;"></div>`
