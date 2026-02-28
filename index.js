@@ -6,6 +6,7 @@ import express from 'express'
 import basicAuth from 'express-basic-auth'
 import { constants } from 'buffer'
 import favicon from 'serve-favicon'
+import exif from 'exif-reader'
 
 const PORT_NUMBER = process.env.PORT_NUMBER || 80
 const PHOTOS_ROOT_PATH = process.env.PHOTOS_ROOT_PATH || '/photos'
@@ -15,6 +16,7 @@ const PREVIEW_SIZE = process.env.PREVIEW_SIZE || 150
 const HTML_URL_BASE = process.env.HTML_URL_BASE || '/gallery/'
 const FILES_URL_BASE = process.env.FILES_URL_BASE || '/galleryfiles/'
 const PREVIEWS_URL_BASE = process.env.PREVIEWS_URL_BASE || '/gallerypreviews/'
+const SINGLEPHOTO_URL_BASE = process.env.SINGLEPHOTO_URL_BASE || '/gallerysinglephoto/'
 const BASIC_AUTH_USERS_FILE = process.env.BASIC_AUTH_USERS_FILE || null
 const BASIC_AUTH_REALM = process.env.BASIC_AUTH_REALM || 'simple-gallery'
 const LOG_LEVEL = process.env.LOG_LEVEL || 'debug' // 'error', 'info' or 'debug'
@@ -39,6 +41,10 @@ const HTML_PAGE_START = `
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="license" href="https://www.gnu.org/licenses/agpl-3.0.txt" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fluid.classless.lime.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <title>Simple Gallery</title>
     </head>
     <body>
@@ -221,11 +227,11 @@ server.get(new RegExp('^' + HTML_URL_BASE + '.*'), async (req, resp) => {
         respHtml += `<figcaption style="font-size:x-small">${fileName}</figcaption>`
         respHtml += `</figure></a>`
       } else if (['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(fileName).toLowerCase())) {
-        // it's a file
+        // it's an image file
         // only keep image files
 
         let imgPreviewPath = PREVIEWS_URL_BASE + filePath + '@' + PREVIEW_SIZE
-        respHtml += `<a href="${FILES_URL_BASE + filePath}">`
+        respHtml += `<a href="${SINGLEPHOTO_URL_BASE + filePath}">`
         respHtml += `<figure style="display:inline-block; margin:10px; text-align:center;">`
         respHtml += `<img src="${imgPreviewPath}">`
         respHtml += `<figcaption style="font-size:x-small">${fileName}</figcaption>`
@@ -307,6 +313,73 @@ server.get(new RegExp('^' + PREVIEWS_URL_BASE + '.*'), async (req, resp) => {
     }
     resp.send(outputBuffer)
   }
+})
+
+server.get(new RegExp('^' + SINGLEPHOTO_URL_BASE + '.*'), async (req, resp) => {
+  logDebug('Requested single photo: ' + req.path)
+
+  let routePath = decodeURIComponent(req.path).substring(SINGLEPHOTO_URL_BASE.length)
+  let originalFileFullPath = path.join(PHOTOS_ROOT_PATH, routePath)
+  // check if file exists
+  try {
+    await fs.access(originalFileFullPath, constants.R_OK)
+  } catch {
+    logError('Single photo file does not exist: ' + originalFileFullPath)
+    resp.sendStatus(404)
+    return
+  }
+
+  // read the file metadata
+  let filebuffer = await fs.readFile(originalFileFullPath)
+  let metadata = await sharp(filebuffer).metadata()
+  let exifdata = exif(metadata.exif)
+
+  let respHtml = HTML_PAGE_START
+  respHtml += `
+    <header>
+    <h2>${routePath}</h2>
+    </header>
+    `
+  const phone = exifdata?.Image?.Make + ' ' + exifdata?.Image?.Model
+  const date = exifdata?.Photo?.DateTimeOriginal
+  const latitude =
+    exifdata?.GPSInfo?.GPSLatitude[0] +
+    exifdata?.GPSInfo?.GPSLatitude[1] / 60 +
+    exifdata?.GPSInfo?.GPSLatitude[2] / 3600
+  const longitude =
+    exifdata?.GPSInfo?.GPSLongitude[0] +
+    exifdata?.GPSInfo?.GPSLongitude[1] / 60 +
+    exifdata?.GPSInfo?.GPSLongitude[2] / 3600
+  // there is a parent directory
+  let iSlash = routePath.lastIndexOf('/')
+  if (iSlash === -1) {
+    // no smlash found, remove the whole string
+    iSlash = 0
+  }
+  respHtml += `<a href="${HTML_URL_BASE + routePath.substring(0, iSlash)}"><h4>⬆️ Up</h4></a><br><br>`
+  respHtml += `<div style="display: flex; align-items: center; justify-content: center;">`
+  respHtml += `<a href="${FILES_URL_BASE + routePath}">`
+  respHtml += `<div><img src="${FILES_URL_BASE + routePath}" style="max-width:90vw; height:auto;"></div>`
+  respHtml += `</a>`
+  respHtml += `</div><br>`
+  respHtml += `<article>`
+  respHtml += `<div>Phone: ${phone}</div>`
+  respHtml += `<div>Date: ${date}</div>`
+  if (latitude && longitude) {
+    respHtml += `<div id="map" style="height: 180px;"></div>`
+    respHtml += `<script>
+      const map = L.map('map').setView([${latitude}, ${longitude}], 13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+      var marker = L.marker([${latitude}, ${longitude}]).addTo(map);
+    </script>`
+  }
+
+  respHtml += `</article>`
+  respHtml += HTML_PAGE_END
+  resp.send(respHtml)
 })
 
 server.listen(PORT_NUMBER, () => {
