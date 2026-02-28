@@ -55,8 +55,15 @@ The authorization file must be setup in the following way:
 the acessLevel is specified as follows:
 
 - "all" gives access to all pictures and folders
+- an object like
 
-TODO: add folder-based permission system
+```js {
+     "allow": ["/", "/2013"],
+     "deny": ["2013/summer"]
+   }
+```
+
+specifies folders to access and folders to hide
 
 # Docker
 
